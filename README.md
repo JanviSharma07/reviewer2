@@ -45,6 +45,9 @@ Put your free Groq key (from https://console.groq.com/keys) in `.env` before run
 
 - Judges papers from their abstracts only, not full text, so subtle disagreements can be missed.
 - Checks at most 3 claims and 10 papers per claim to stay within free API limits.
+- For long papers the Meta-Reviewer sees only the first part of the text, so its comments on methodology should be checked against the full paper.
+- New or niche research topics often return "Insufficient evidence", because little related work has been published.
+- If the paper under review is already published online, it is detected by title and excluded from its own evidence.
 - The model can occasionally mislabel a paper's stance; every label shows its reason and a link so a person can check it.
 - Free tiers are rate-limited; heavy use may need a short wait between runs.
 - It assists a human reviewer and does not replace one.

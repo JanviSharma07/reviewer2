@@ -4,8 +4,10 @@ Flow:
     Claim Extractor -> Evidence Agent -> (weak evidence? -> Query Refiner -> Evidence Agent) -> Meta-Reviewer
 """
 
+import difflib
 import json
 import operator
+import re
 from typing import Annotated, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -30,6 +32,15 @@ class ReviewState(TypedDict, total=False):
 
 def log(agent: str, message: str) -> dict:
     return {"agent": agent, "message": message}
+
+
+def same_paper(title_a: str, title_b: str) -> bool:
+    """True if two titles are (almost) the same paper, ignoring case, spaces and punctuation."""
+    a = re.sub(r"[^a-z0-9]", "", (title_a or "").lower())
+    b = re.sub(r"[^a-z0-9]", "", (title_b or "").lower())
+    if not a or not b:
+        return False
+    return difflib.SequenceMatcher(None, a, b).ratio() >= 0.92
 
 
 # ---------- Consensus scoring (plain Python, so it is transparent) ----------
@@ -60,7 +71,11 @@ Read the draft paper and pick its most important claims that can be checked agai
 Prefer claims about findings, effects, comparisons, and the paper's conclusions or recommendations. Skip definitions, background facts everyone agrees on, and future work.
 Each claim must be about a DIFFERENT topic. Never pick two claims that are variations of the same finding; merge them into one.
 Bold or surprising claims (e.g. "X has no effect on Y") are the most important to check, so include them.
-For each claim give a short search query (3 to 8 keywords) that would find related papers.
+Write each claim as a GENERAL finding that other studies could also have tested (e.g. "mathematics skills predict
+success in science competitions"), not as this study's exact numbers (e.g. "43 students were identified").
+Prefer claims where existing research is likely to exist. Avoid claims that only describe this paper's own new data.
+For each claim give a short search query of 3 to 6 GENERAL keywords that would find related papers.
+Do not put names of specific datasets, competitions, countries or the paper's own terms in the query.
 Reply in JSON only, in this exact shape:
 {"title": "paper title", "field": "research field",
  "claims": [{"claim": "the claim in one sentence", "quote": "short exact quote from the paper", "search_query": "keywords"}]}"""
@@ -80,16 +95,22 @@ For every paper decide:
 Reply in JSON only: {"papers": [{"index": 1, "relevant": true, "stance": "supports", "reason": "..."}]}"""
 
 REFINER_SYSTEM = """You are the Query Refiner. A literature search for a claim found too few relevant papers.
-Write ONE better search query: broader, using the standard academic terms for the topic, 3 to 7 keywords.
+Write ONE better search query that is SHORTER and BROADER than the ones already tried: 3 to 5 general keywords,
+using standard academic terms. Remove names of specific datasets, competitions, countries and numbers.
 Reply in JSON only: {"search_query": "..."}"""
 
 META_SYSTEM = """You are the Meta-Reviewer (the senior reviewer) on an academic peer-review panel.
-You get the paper's opening text and the Evidence Agent's findings for each key claim.
+You get the opening part of the paper (not the full paper) and the Evidence Agent's findings for each key claim.
 Write the final review. Rules:
 - decision must be exactly one of: "Accept", "Major Revision", "Reject".
   Accept: key claims are well supported and the work looks sound.
   Major Revision: some claims are contested, unsupported, or need more evidence.
   Reject: central claims go against the literature or the study has serious flaws.
+- "Insufficient evidence" only means not enough related published research was found. It does NOT mean the claim
+  is wrong, and it does NOT mean the paper lacks data. Say the literature check was inconclusive for that claim.
+- You only see part of the paper. Never say the paper is missing something (metrics, tests, validation) unless
+  it is clearly absent from the text you were given; instead phrase it as "make sure the paper reports ...".
+- If most claims have insufficient evidence, base the decision mainly on the paper text, and say so in the summary.
 - Only mention papers that appear in the findings, using their exact titles. Never invent papers or numbers.
 - strengths and weaknesses: 2 to 4 items each, every item a separate short point (one idea per item, no semicolon lists).
 - Fixes must be specific and ordered by importance (priority 1 = most important), at most 5.
@@ -143,6 +164,9 @@ def build_graph(llm, max_claims: int = 3, papers_per_claim: int = 8):
             c["queries_tried"] = c["queries_tried"] + [c["search_query"]]
             papers, source = search_papers(c["search_query"], papers_per_claim)
             c["source"] = source
+            # The paper under review may itself be published online; it cannot be evidence for itself.
+            own = [p for p in papers if same_paper(p["title"], state.get("title", ""))]
+            papers = [p for p in papers if p not in own]
             if papers:
                 listing = "\n\n".join(
                     f"[{n}] {p['title']} ({p['year']})\n{p['abstract'][:ABSTRACT_CHARS]}"
@@ -161,6 +185,8 @@ def build_graph(llm, max_claims: int = 3, papers_per_claim: int = 8):
             c["status"] = "weak" if weak and c["attempts"] == 0 else "done"
             msg = (f"Claim {i}: searched {source} for \"{c['search_query']}\", "
                    f"{len(papers)} paper(s) read, {c['score']['relevant']} relevant -> {c['score']['label']}")
+            if own:
+                msg += " (skipped the paper under review itself)"
             if c["status"] == "weak":
                 msg += " (too little evidence, will search again)"
             entries.append(log("Evidence Agent", msg))
@@ -200,7 +226,7 @@ def build_graph(llm, max_claims: int = 3, papers_per_claim: int = 8):
                 "key_papers": [{"title": p["title"], "year": p["year"],
                                 "stance": p["stance"], "reason": p["reason"]} for p in relevant],
             })
-        user = (f"PAPER TITLE: {state.get('title')}\n\nOPENING TEXT:\n{state['paper_text'][:3000]}\n\n"
+        user = (f"PAPER TITLE: {state.get('title')}\n\nOPENING TEXT:\n{state['paper_text'][:6000]}\n\n"
                 f"EVIDENCE FINDINGS:\n{json.dumps(findings, indent=1)}")
         review = llm.ask_json(META_SYSTEM, user, max_tokens=1800)
         if review.get("decision") not in DECISIONS:
