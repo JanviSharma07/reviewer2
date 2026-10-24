@@ -16,7 +16,7 @@ Claim Extractor -> Evidence Agent -> Meta-Reviewer
 |---|---|
 | Claim Extractor | Reads the draft and picks up to 3 key, checkable claims, each with a search query |
 | Evidence Agent | Searches Semantic Scholar (OpenAlex as backup) for related papers, reads their abstracts, and labels each paper as supports / opposes / mixed / not relevant |
-| Query Refiner | Runs only if a claim has fewer than 2 relevant papers: writes a better search query, then the Evidence Agent tries again (once) |
+| Query Refiner | Runs only if a claim has fewer than 3 relevant papers: writes a better search query, then the Evidence Agent tries again (once) |
 | Meta-Reviewer | Combines all findings into a decision, strengths, weaknesses and prioritised fixes, citing only papers that were actually found |
 
 The consensus label for each claim (Well supported / Contested / Goes against the literature / Insufficient evidence) is calculated in plain Python from the paper counts, not guessed by the model.
