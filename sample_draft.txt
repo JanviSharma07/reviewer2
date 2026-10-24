@@ -1,0 +1,21 @@
+[SAMPLE DRAFT - fictional student paper written only to demo Reviewer 2. The study, data and results below are made up.]
+
+Title: Late-Night Screens, Caffeine and Sleep: A Study of Engineering Students
+
+Abstract
+Poor sleep is common among university students and may affect their health and grades. In this study we surveyed 40 engineering students at one college for two weeks about their bedtime smartphone use, caffeine intake and sleep. We find that using a smartphone in the hour before bed is associated with later sleep onset and lower self-reported sleep quality. We also find that caffeine consumed in the afternoon has no measurable effect on night-time sleep, so students do not need to limit afternoon coffee. Finally, we conclude that poor sleep quality has no relationship with academic performance in engineering students.
+
+1. Introduction
+Engineering students often study late into the night and rely on coffee to stay alert. At the same time, smartphones are used heavily before bed. This paper examines how bedtime screen use and caffeine relate to sleep, and whether sleep affects grades.
+
+2. Method
+We recruited 40 volunteers from second-year engineering classes. Each student filled in a daily online diary for 14 days, reporting minutes of phone use in the hour before bed, cups of coffee or tea after 2 pm, time of falling asleep, and a 1-5 sleep quality rating. Semester grade point averages were self-reported at the end of the study. We used Pearson correlation for all analyses.
+
+3. Results
+Phone use in the hour before bed correlated with later sleep onset (r = 0.41) and lower sleep quality (r = -0.33). Afternoon caffeine showed a weak correlation with sleep onset (r = 0.12), which we interpret as no effect. Sleep quality and GPA showed a correlation of r = 0.08.
+
+4. Discussion
+Our results support limiting smartphone use before bed. Since caffeine after 2 pm had no effect, we recommend that students can drink coffee freely in the afternoon. Because sleep quality did not relate to GPA, universities do not need to consider sleep in academic support programmes.
+
+5. Conclusion
+Bedtime screen use harms sleep, afternoon caffeine does not, and sleep does not affect academic performance.
