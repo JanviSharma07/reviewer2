@@ -2,6 +2,7 @@
 
 import functools
 import os
+import re
 import time
 
 import pymupdf
@@ -16,6 +17,17 @@ def read_pdf(file_bytes: bytes) -> str:
     """Extract plain text from an uploaded PDF."""
     with pymupdf.open(stream=file_bytes, filetype="pdf") as doc:
         return "\n".join(page.get_text() for page in doc)
+
+
+def _dedupe(papers: list) -> list:
+    """Paper databases sometimes list the same paper twice (e.g. preprint + journal). Keep the first copy."""
+    seen, unique = set(), []
+    for p in papers:
+        key = re.sub(r"[^a-z0-9]", "", p["title"].lower())
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(p)
+    return unique
 
 
 def _search_semantic_scholar(query: str, limit: int) -> list:
@@ -46,7 +58,7 @@ def _search_semantic_scholar(query: str, limit: int) -> list:
                 "citations": item.get("citationCount") or 0,
                 "url": item.get("url") or "",
             })
-        return papers[:limit]
+        return _dedupe(papers)[:limit]
     raise RuntimeError("Semantic Scholar rate limit")
 
 
@@ -82,7 +94,7 @@ def _search_openalex(query: str, limit: int) -> list:
             "citations": item.get("cited_by_count") or 0,
             "url": item.get("doi") or item.get("id") or "",
         })
-    return papers[:limit]
+    return _dedupe(papers)[:limit]
 
 
 @functools.lru_cache(maxsize=64)
